@@ -30,8 +30,8 @@ namespace MetaExchangeApi.Controllers
         {
             string basePath = AppDomain.CurrentDomain.BaseDirectory;
 
-            // Path to the file containing the order books. Hardcoding usually is not a good practice
-            // but for the sake of this exercise I makes sense to avoid unnecessary complexity.
+            // Path to the file containing the order books. We need to handle the case when the app is running
+            // in development mode and the path to the data is different.
             string dataPath = Path.Combine(basePath, "Data", "order_books_data");
             if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
             {
@@ -49,8 +49,6 @@ namespace MetaExchangeApi.Controllers
 
         // GET api/metaexchange/quote
         // This endpoint returns the best price to buy or sell a given amount of BTC.
-        // In the real production app we would expose more endpoints for different functionalities
-        // like submitting orders, querying order history, balances etc..
         // 
         // @param amount The amount of BTC to buy or sell.
         // @param type The type of the order (Buy or Sell).
@@ -61,9 +59,10 @@ namespace MetaExchangeApi.Controllers
             var watch = new System.Diagnostics.Stopwatch();
             watch.Start();
 
-            // Load and cache order books if they are not already cached this is done only once
+            // Load and cache order books if they are not already cached. We expect this to be done only once
             // on the first request. Probably it would make sense to cache it on initialization
-            // of the application but for the sake of this exercise we are doing it on the first request.
+            // of the controller so It doesn't degrade UX. Anyway for the purpose of this task it does not
+            // make a big difference as the whole parsing and caching takes less than a second.
             if (!_memoryCache.TryGetValue("orderBooks", out List<OrderBook>? orderBooks))
             {
                 await LoadAndCacheOrderBooksAsync();
@@ -76,7 +75,7 @@ namespace MetaExchangeApi.Controllers
                 return BadRequest("Order books not found.");
             }
 
-            // Match the order against the order books and find the best paths/prices
+            // Match the order against the order books and find the best paths/prices.
             Dictionary<string, double> exchangeToBestPrice = await metaExchangeService.MatchOrderAsync(amount, type, orderBooks);
 
             watch.Stop();
@@ -87,22 +86,13 @@ namespace MetaExchangeApi.Controllers
                 return BadRequest("No paths found try lower amount.");
             }
 
-
-            //Initialize a StringBuilder to construct the result string
             StringBuilder result = new StringBuilder();
             result.AppendLine($"Found {exchangeToBestPrice.Count} paths:");
-
-            // Append the best price to the result string
             result.AppendLine($"Best price to {type} {amount} BTC is {exchangeToBestPrice.Values.First()} EUR");
-
-            // Due to ugly printout I decided to change the output to a more readable format
             return result.ToString();
         }
 
-        // This endpoint would be used to submit a trade order. In this case we implemented it
-        // to showcase this functionality but in the real production app we would add trade
-        // order to the order book or match it against the existing orders depending on order
-        // type (limit, market), side (buy, sell) etc..
+        // This endpoint can be used to submit a trade order. It is not implemented in the current version of the API.
         [HttpPost("trade")]
         public string SubmitTrade(double amount, string type)
         {

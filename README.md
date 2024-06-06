@@ -19,6 +19,7 @@
 // without Docker
 
 Add .env file and just copy what's in .env.example
+Unzip order_books_data.7z in Data/ folder
 
 > dotnet restore
 > dotnet build
@@ -47,6 +48,7 @@ curl -X 'POST' \
 // We only Dockerised MetaExchangeApi because it makes the most
 // sense. MetaExchangeConsole was used mainly for debugging.
 
+Unzip Unzip order_books_data.7z in MetaExchangeApi/Data/ folder
 > cd MetaExchangeConsole/
 > dotnet restore
 > dotnet build
