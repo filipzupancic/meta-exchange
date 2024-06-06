@@ -1,0 +1,31 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.002.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MetaExchangeApi", "MetaExchangeApi\MetaExchangeApi.csproj", "{C948CFF4-9016-40A9-A930-AC70FC2CFE56}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MetaExchangeTest", "MetaExchangeTest\MetaExchangeTest.csproj", "{5699F0E8-C094-451D-9068-323D8739EF67}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{C948CFF4-9016-40A9-A930-AC70FC2CFE56}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C948CFF4-9016-40A9-A930-AC70FC2CFE56}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C948CFF4-9016-40A9-A930-AC70FC2CFE56}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C948CFF4-9016-40A9-A930-AC70FC2CFE56}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5699F0E8-C094-451D-9068-323D8739EF67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5699F0E8-C094-451D-9068-323D8739EF67}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5699F0E8-C094-451D-9068-323D8739EF67}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5699F0E8-C094-451D-9068-323D8739EF67}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {AE8F1A63-0D36-4EF0-A50B-413E438DDE38}
+	EndGlobalSection
+EndGlobal

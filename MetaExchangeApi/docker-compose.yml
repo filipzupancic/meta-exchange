@@ -1,0 +1,16 @@
+networks:
+  dev:
+    driver: bridge
+services:
+  webapp:
+    image: docker.io/library/meta-exchange-api
+    container_name: meta-exchange-api
+    ports:
+      - "5057:5057" # Maps the HTTP port
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - ASPNETCORE_ENVIRONMENT=PRODUCTION
+      - ASPNETCORE_URLS=http://+:5057
+    restart: always
