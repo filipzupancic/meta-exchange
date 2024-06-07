@@ -19,7 +19,7 @@ public class OrderBookMatchingTest
                     Order = new Order
                     {
                         Id = "1",
-                        Time = DateTime.Now,
+                        Time = acqTime,
                         Type = "Limit",
                         Kind = "Sell",
                         Amount = 7,
@@ -30,8 +30,8 @@ public class OrderBookMatchingTest
                 {
                     Order = new Order
                     {
-                        Id = "1",
-                        Time = DateTime.Now,
+                        Id = "2",
+                        Time = acqTime,
                         Type = "Limit",
                         Kind = "Sell",
                         Amount = 4,
@@ -46,7 +46,7 @@ public class OrderBookMatchingTest
                     Order = new Order
                     {
                         Id = "1",
-                        Time = DateTime.Now,
+                        Time = acqTime,
                         Type = "Limit",
                         Kind = "Buy",
                         Amount = 7,
@@ -57,8 +57,8 @@ public class OrderBookMatchingTest
                 {
                     Order = new Order
                     {
-                        Id = "1",
-                        Time = DateTime.Now,
+                        Id = "2",
+                        Time = acqTime,
                         Type = "Limit",
                         Kind = "Buy",
                         Amount = 4,

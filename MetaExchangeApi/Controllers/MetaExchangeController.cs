@@ -69,7 +69,7 @@ namespace MetaExchangeApi.Controllers
                 orderBooks = _memoryCache.Get<List<OrderBook>>("orderBooks");
             }
 
-            // This should not happen but we need to handle it. Maybe we could handle it more gracefully.
+            // This should not happen but we need to handle it.
             if (orderBooks == null)
             {
                 return BadRequest("Order books not found.");
