@@ -64,7 +64,7 @@ Unzip order_books_data.7z in MetaExchangeApi/Data/ folder
 > cd MetaExchangeTest/
 > dotnet restore
 > dotnet build
-> dotnet run
+> dotnet test
 ```
 
 ## 📦 Structure
