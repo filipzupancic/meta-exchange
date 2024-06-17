@@ -10,6 +10,7 @@ namespace MetaExchangeApi.Models;
  **/
 public class OrderBook
 {
+    public string? Id { get; set; }
     public DateTime AcqTime { get; set; }
     public required List<OrderEntry> Bids { get; set; }
     public required List<OrderEntry> Asks { get; set; }
@@ -44,4 +45,31 @@ public class Order
     public string? Kind { get; set; }
     public double Amount { get; set; }
     public double Price { get; set; }
+}
+
+/**
+ * Represents a sorted order. We'll use it to sort the orders by price 
+ * and amount depending on trade side.
+ *
+ * @param OrderBookId The unique identifier of the order book.
+ * @param Amount The amount of the order.
+ * @param Price The price of the order.
+ **/
+public class SortedOrderEntry
+{
+    public required string OrderBookId { get; set; }
+    public double Amount { get; set; }
+    public double Price { get; set; }
+}
+
+/**
+ * Represents the balances of an order book / exchange.
+ *
+ * @param BalanceBtc The balance in BTC.
+ * @param BalanceEur The balance in EUR.
+ **/
+public class OrderBookBalances
+{
+    public double BalanceBtc { get; set; }
+    public double BalanceEur { get; set; }
 }

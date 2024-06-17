@@ -3,7 +3,6 @@ using MetaExchangeApi.Models;
 using MetaExchangeApi.Services;
 using Microsoft.Extensions.Caching.Memory;
 using System.Text;
-using dotenv.net;
 
 namespace MetaExchangeApi.Controllers
 {
@@ -11,12 +10,8 @@ namespace MetaExchangeApi.Controllers
     [ApiController]
     public class MetaExchangeController : ControllerBase
     {
-        // Contains logic for loading order books and matching orders
         private readonly MetaExchangeService metaExchangeService = new MetaExchangeService();
-
         private readonly ILogger<MetaExchangeController> _logger;
-
-        // Memory cache for caching order books
         private readonly IMemoryCache _memoryCache;
 
         public MetaExchangeController(ILogger<MetaExchangeController> logger, IMemoryCache memoryCache)
@@ -25,71 +20,64 @@ namespace MetaExchangeApi.Controllers
             _memoryCache = memoryCache;
         }
 
-        // Logic for loading and caching order books
-        private async Task LoadAndCacheOrderBooksAsync()
-        {
-            string basePath = AppDomain.CurrentDomain.BaseDirectory;
-
-            // Path to the file containing the order books. We need to handle the case when the app is running
-            // in development mode and the path to the data is different.
-            string dataPath = Path.Combine(basePath, "Data", "order_books_data");
-            if (Environment.GetEnvironmentVariable("ASPNETCORE_ENVIRONMENT") == "Development")
-            {
-                DotEnv.Load();
-
-                // We could handle potential nullability of RELATIVE_DATA_PATH in a more robust way
-                dataPath = Environment.GetEnvironmentVariable("RELATIVE_DATA_PATH")!;
-            }
-
-            List<OrderBook> orderBooks = await metaExchangeService.LoadOrderBooksParallel(dataPath);
-
-            _memoryCache.Set("orderBooks", orderBooks);
-            _logger.LogDebug("Order books loaded and cached.");
-        }
-
-        // GET api/metaexchange/quote
-        // This endpoint returns the best price to buy or sell a given amount of BTC.
-        // 
-        // @param amount The amount of BTC to buy or sell.
-        // @param type The type of the order (Buy or Sell).
-        // @return The best paths/prices to buy or sell a given amount of BTC.
+        /** 
+         * GET api/metaexchange/quote
+         * This endpoint returns the best path to buy or sell a given amount of BTC
+         * taking into account exchange balances and cross exchange swaps.
+         * 
+         * @param amount The amount of BTC to buy or sell.
+         * @param type The type of the order (Buy or Sell).
+         * @return The best paths/prices to buy or sell a given amount of BTC.
+         **/
         [HttpGet("quote")]
         public async Task<ActionResult<string>> GetQuote(double amount, string type)
         {
-            var watch = new System.Diagnostics.Stopwatch();
-            watch.Start();
+            var watch = System.Diagnostics.Stopwatch.StartNew();
 
-            // Load and cache order books if they are not already cached. We expect this to be done only once
-            // on the first request. Probably it would make sense to cache it on initialization
-            // of the controller so It doesn't degrade UX. Anyway for the purpose of this task it does not
-            // make a big difference as the whole parsing and caching takes less than a second.
-            if (!_memoryCache.TryGetValue("orderBooks", out List<OrderBook>? orderBooks))
-            {
-                await LoadAndCacheOrderBooksAsync();
-                orderBooks = _memoryCache.Get<List<OrderBook>>("orderBooks");
-            }
+            // Cached on startup to avoid reading the file every time. Caching logic is implemented in OrderBookHostedService.
+            List<SortedOrderEntry>? sortedOrders = (type == "Buy") ? _memoryCache.Get<List<SortedOrderEntry>>("sortedAsks") : _memoryCache.Get<List<SortedOrderEntry>>("sortedBids");
+            Dictionary<string, OrderBookBalances>? exchangeBalances = _memoryCache.Get<Dictionary<string, OrderBookBalances>>("exchangeBalances");
 
-            // This should not happen but we need to handle it.
-            if (orderBooks == null)
+            // This should never happen, but we need to handle it gracefully.
+            if (sortedOrders == null || exchangeBalances == null)
             {
-                return BadRequest("Order books not found.");
+                return StatusCode(500, "Internal Server Error. No liquidity."); ;
             }
 
             // Match the order against the order books and find the best paths/prices.
-            Dictionary<string, double> exchangeToBestPrice = await metaExchangeService.MatchOrderAsync(amount, type, orderBooks);
+            BestPathResponse? bestPath = await metaExchangeService.MatchOrdersAsync(amount, type, sortedOrders, exchangeBalances);
+
+            // This should not happen, but we need to handle it gracefully.
+            if (bestPath == null)
+            {
+                return BadRequest("No paths found. Try a lower amount.");
+            }
+
+            var result = new StringBuilder();
+
+            result.AppendLine("Path found:");
+            result.AppendLine($"Total Filled Amount: {Math.Round(bestPath.TotalAmount, 6)} BTC");
+            result.AppendLine($"Total Price: {Math.Round(bestPath.AveragePrice * bestPath.TotalAmount, 6)} EUR");
+            result.AppendLine($"Average Price: {Math.Round(bestPath.AveragePrice, 6)} EUR");
+
+            // We want to prevent the response from being too large as it slows the UI so in case of bigger amounts we'll only return cumulative amount and price.
+            if (amount <= 1000.0)
+            {
+                foreach (var fill in bestPath.ExchangeDetails)
+                {
+                    result.AppendLine($"Exchange: {fill.ExchangeId}, Filled Amount: {Math.Round(fill.FilledAmount, 6)} BTC, Average Price: {Math.Round(fill.AveragePrice, 6)} EUR, Remaining BTC: {Math.Round(fill.RemainingBalanceBtc, 6)}, Remaining EUR: {Math.Round(fill.RemainingBalanceEur, 6)}");
+                }
+            }
+            else
+            {
+                result.AppendLine("Path is hidden due to large amount.");
+            }
+
 
             watch.Stop();
             _logger.LogDebug($"GetQuote | Execution Time: {watch.ElapsedMilliseconds} ms");
 
-            if (exchangeToBestPrice.Count == 0)
-            {
-                return BadRequest("No paths found try lower amount.");
-            }
-
-            StringBuilder result = new StringBuilder();
-            result.AppendLine($"Found {exchangeToBestPrice.Count} paths:");
-            result.AppendLine($"Best price to {type} {amount} BTC is {exchangeToBestPrice.Values.First()} EUR");
-            return result.ToString();
+            return Ok(result.ToString());
         }
 
         // This endpoint can be used to submit a trade order. It is not implemented in the current version of the API.

@@ -1,5 +1,13 @@
 @MetaExchangeApi_HostAddress = http://localhost:5057
 
-GET {{MetaExchangeApi_HostAddress}}/quote?amount=10&type=Sell
+### Get a quote for buying or selling a given amount of BTC
+GET {{MetaExchangeApi_HostAddress}}/api/metaexchange/quote?amount=10&type=Sell
 
-###
+### Submit a trade order
+POST {{MetaExchangeApi_HostAddress}}/api/metaexchange/trade
+Content-Type: application/json
+
+{
+    "amount": 10,
+    "type": "Sell"
+}

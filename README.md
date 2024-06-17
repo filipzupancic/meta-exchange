@@ -1,6 +1,6 @@
 # <h1 align="center"> MetaExchange </h1>
 
-<p style="text-align: center;"> <b>MetaExchange</b> is a piece of code that always gives the user the best possible price if he is buying or selling a certain amount of BTC. </p>
+<p style="text-align: center;"> <b>MetaExchange</b> is a piece of code that always gives the user the best possible price if he is buying or selling a certain amount of BTC. Order matching logic takes into account balance constraints and cross exchange trades. </p>
 
 ## 🚀 Quickstart
 
@@ -14,6 +14,7 @@
 > cd MetaExchangeApi/
 
 // with Docker assuming you have docker Desktop installed
+
 > docker-compose up --build
 
 // without Docker
@@ -59,7 +60,7 @@ Unzip order_books_data.7z in MetaExchangeApi/Data/ folder
 - **Run MetaExchangeTest**
 
 ```
-// There are two tests and they should pass :D
+// There are 4 unit tests inside OrderBookMatchingTest.cs.
 
 > cd MetaExchangeTest/
 > dotnet restore
@@ -73,17 +74,16 @@ Unzip order_books_data.7z in MetaExchangeApi/Data/ folder
 
 - **Controllers/MetaExchangeController** class handles the logic for quoting the best prices for trades, utilizing MetaExchangeService service to load order books and match trades efficiently. It employs caching to store order books, reducing the need for repeated loading from the file system, and features a GET and POST endpoints that provide trade pricing information based on user-specified criteria.
 
-- **Services/MetaExchangeService** class handles order book loading and order matching.
+- **Services/MetaExchangeService** class handles order book loading, order sorting and order matching. Order matching takes into account balance constraints and cross exchange trades.
 
-- **Models/OrderBook** is where classes that represent OrderBook object are defined.
+- **Services/OrderBookHostedService** class handles order book loading and caching on Startup so we don't need to load it every time.
+
+- **Models/OrderBookModel** is where classes that represent OrderBook object are defined.
+
+- **Models/MetaExchangeModel** is where classes that represent BestPathResponse object are defined.
 
 - **Data/** contains order_books_data.7z. It is compressed due to GitHub size limits.
 
 **MetaExchangeConsole**: This is a simple console project that holds similar logic to the MetaExchangeApi and is useful for debugging as it isolates core logic from web api features.
 
 **MetaExchangeTest**: Simple unit tests for verification of the order matching logic.
-
-## 🙋‍♂️ Disclaimer
-
-I have read the assignment carefully and I believe all parts are implemented. There are many potential improvements but I wanted to strike the balance between
-the delivery time and quality of code. If there were any doubts I added the comment in the code explaining why I wrote what I wrote. Code is documented a bit too much for my taste but I wanted to explain my thought process as precisely as possible. Normally I don't write so many comments. I am willing to defend my solution or discuss it in the office in case there are any questions or design features you would implement differently. I hope I did well, cheers!

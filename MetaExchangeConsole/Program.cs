@@ -30,31 +30,32 @@ class Program
         //Dictionary<string, double> exchangeToBestPrice = orderBookMatcher.MatchOrders(tradeAmount, tradeType, orderBooks);
 
         // Load order books and match orders in parallel
-        var orderBooksParallel = orderBookLoader.LoadOrderBooksParallel("../MetaExchangeApi/Data/order_books_data");
-        Dictionary<string, double> exchangeToBestPrice = orderBookMatcher.MatchOrders(tradeAmount, tradeType, orderBooksParallel);
+        List<OrderBook> orderBooksParallel = orderBookLoader.LoadOrderBooksParallel("../MetaExchangeApi/Data/order_books_data");
+        List<SortedOrderEntry> sortedOrders = orderBookMatcher.SortOrdersBySide(orderBooksParallel, tradeType);
+        Dictionary<string, OrderBookBalances> exchangeBalances = orderBookMatcher.LoadBalances(orderBooksParallel);
 
-        if (exchangeToBestPrice.Count == 0)
+        BestPathResponse? bestPath = orderBookMatcher.MatchOrders(tradeAmount, tradeType, sortedOrders, exchangeBalances);
+
+        if (bestPath == null)
         {
-            Console.WriteLine("No paths found try lower amount.");
+            Console.WriteLine("No paths found. Try a lower amount.");
+            return;
         }
-        else
+
+        var result = new StringBuilder();
+
+        result.AppendLine("Path found:");
+        result.AppendLine($"Total Filled Amount: {Math.Round(bestPath.TotalAmount, 6)} BTC");
+        result.AppendLine($"Total Price: {Math.Round(bestPath.AveragePrice * bestPath.TotalAmount, 6)} EUR");
+        result.AppendLine($"Average Price: {Math.Round(bestPath.AveragePrice, 6)} EUR");
+
+
+        foreach (var fill in bestPath.ExchangeDetails)
         {
-            // Initialize a StringBuilder to construct the result string
-            StringBuilder result = new StringBuilder();
-            result.AppendLine($"Best prices for Trade Order {tradeType} {tradeAmount} BTC:");
-
-            // Iterate through each exchange with best price and append to the result string
-            // Exchange is represented by timestamp as unique identifier as this is the unique
-            // identifier for each line in the order books data. It's a bit weird but it works.
-            // In the real production app we would probably use exchange name or id but I took
-            // this approach to avoid unnecessary complexity because data is already in this format.
-            foreach (var (exchange, bestPrice) in exchangeToBestPrice)
-            {
-                result.AppendLine($"Best price at exchange {exchange} is {bestPrice} EUR");
-            }
-
-            Console.WriteLine(result.ToString());
+            result.AppendLine($"Exchange: {fill.ExchangeId}, Filled Amount: {Math.Round(fill.FilledAmount, 6)} BTC, Average Price: {Math.Round(fill.AveragePrice, 6)} EUR, Remaining BTC: {Math.Round(fill.RemainingBalanceBtc, 6)}, Remaining EUR: {Math.Round(fill.RemainingBalanceEur, 6)}");
         }
+
+        Console.WriteLine(result.ToString());
     }
 
     private double PromptForTradeAmount(string message)

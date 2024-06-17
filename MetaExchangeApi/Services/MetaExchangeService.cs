@@ -8,41 +8,11 @@ using System.Collections.Concurrent;
 
 public class MetaExchangeService
 {
-    /**
-    * Load order books from a file serial. This is not used in the current implementation but
-    * I wanted to keep it here for reference. This approach is slower compared to LoadOrderBooksParallel
-    * since it processes lines one by one. In the case of this exercise we are loading small order books
-    * and on average it takes 1 second to load all order books sequentially.
-    * 
-    * @param filePath The path to the file containing the order books.
-    * @return A list of order books.
-    **/
-    public async Task<List<OrderBook>> LoadOrderBooks(string filePath)
-    {
-        var orderBooks = new List<OrderBook>();
-        var lines = await File.ReadAllLinesAsync(filePath);
-
-        foreach (var line in lines)
-        {
-            var jsonPart = line.Split('\t')[1];
-            var orderBook = JsonSerializer.Deserialize<OrderBook>(jsonPart);
-
-            if (orderBook != null)
-            {
-                orderBooks.Add(orderBook);
-            }
-        }
-
-        return orderBooks;
-    }
-
+    private readonly Random random = new Random();
 
     /**
     * Load order books from a file in parallel. This approach improves performance by around 50% 
-    * compared to serial LoadOrderBooks. Since we are caching the order books this is only 
-    * called once when. In the case of this exercise we are loading small order books directly from 
-    * file in reality we would probably store order books to a database and use more complex logic
-    * for loading and caching.
+    * compared to serial LoadOrderBooks.
     *
     * @param filePath The path to the file containing the order books.
     * @return A list of order books.
@@ -55,8 +25,12 @@ public class MetaExchangeService
         // Use Parallel.ForEach to process lines in parallel
         Parallel.ForEach(lines, (line) =>
         {
-            var jsonPart = line.Split('\t')[1];
-            var orderBook = JsonSerializer.Deserialize<OrderBook>(jsonPart);
+            string[] jsonParts = line.Split('\t');
+            string timestamp = jsonParts[0];
+            string json = jsonParts[1];
+            var orderBook = JsonSerializer.Deserialize<OrderBook>(json);
+
+            orderBook!.Id = timestamp;
 
             if (orderBook != null)
             {
@@ -69,81 +43,163 @@ public class MetaExchangeService
     }
 
     /**
-    * Match a trade order against the order books and find paths with best price.
+        * Sort orders by side (Buy or Sell) and return a list of sorted orders. We'll cache the sorted orders
+        * in memory to avoid sorting them every time we need to match a trade order. This significantly improves
+        * performance.
+        *
+        * @param orderBooks The list of order books to sort.
+        * @param side The side of the orders to sort (Buy or Sell).
+        * @return A list of sorted orders either Bids in case of Sell or Asks in case of Buy.
+        **/
+    public async Task<List<SortedOrderEntry>> SortOrdersBySideAsync(List<OrderBook> orderBooks, string side)
+    {
+        return await Task.Run(() =>
+        {
+            var result = new ConcurrentBag<SortedOrderEntry>();
+
+            // Use Parallel.ForEach to process orderBooks in parallel
+            Parallel.ForEach(orderBooks, orderBook =>
+            {
+                var orders = (side == "Sell") ? orderBook.Bids : orderBook.Asks;
+                foreach (var order in orders)
+                {
+                    result.Add(new SortedOrderEntry
+                    {
+                        OrderBookId = orderBook.Id!,
+                        Amount = order.Order.Amount,
+                        Price = order.Order.Price
+                    });
+                }
+            });
+
+            var sortedResult = (side == "Sell")
+                ? result.OrderByDescending(o => o.Price).ThenByDescending(o => o.Amount).ToList()
+                : result.OrderBy(o => o.Price).ThenByDescending(o => o.Amount).ToList();
+
+            return sortedResult;
+        });
+    }
+
+    /**
+    * Load balances for each exchange from the order books. We'll use the balances to calculate the best path
+    * for a trade order. We'll cache the balances in memory to avoid loading them every time we need to match a trade order.
+    * Balances are randomly generated for each exchange and the amount is chosen empirically based on order book liquidity/depth.
     *
-    * Potential improvements: we would probably want to separate the matching logic from the
-    * I/O operations to a different service like OrderBookMatchingService. We could also consider 
-    * using a different data structures for loading / matching. Additionally we could execute matching
-    * in parallel for each order book. In this case I am satisfied with the performance of the current
-    * implementation and I don't see a need for further optimizations since the order books are small and
-    * average matching execution time is 1 ms.
-    *
-    * Additional note: 
-    * In the task description it was stated that each line represents a different exchange.
-    * It was also stated that there are BTC and EUR balances on each exchange. I wasn't sure where to find the
-    * balances so I didn't use them in the matching logic. We could take as balances the first number in each line
-    * that is separated by the dot (1548759600.25189) and is actually the time of the order book snapshot but in
-    * reality the order book depth on each exchange is lower than those balances so It wouldn't make any difference
-    * If we had the balances we would simply add a constraint to the matching logic to check if
-    * there is enough balance on the exchange to execute the trade. I can defend this decision if needed or show how
-    * I would implement it in the office. :D
+    * @param orderBooks The list of order books to load balances from.
+    * @return A dictionary of exchange balances.
+    **/
+    public async Task<Dictionary<string, OrderBookBalances>> LoadBalancesAsync(List<OrderBook> orderBooks)
+    {
+        return await Task.Run(() =>
+        {
+            var exchangeBalances = new ConcurrentDictionary<string, OrderBookBalances>();
+
+            Parallel.ForEach(orderBooks, orderBook =>
+            {
+                var balance = new OrderBookBalances
+                {
+                    BalanceBtc = random.NextDouble() * 500,
+                    BalanceEur = random.NextDouble() * 500 * 3000
+                };
+
+                exchangeBalances[orderBook.Id!] = balance;
+            });
+
+            return new Dictionary<string, OrderBookBalances>(exchangeBalances);
+        });
+    }
+
+    /**
+    * Match a trade order against the order books and find paths with best price. We match the order
+    * against the available orders in the order books. Available orders are sorted first by price and amount
+    * depending on the side of the trade order. We then iterate through the available orders and match the
+    * trade order against them. We take into account the remaining balances on each of the exchanges we swap through.
     * 
-    * @param trade The trade order to match.
+    * @param amountIn The amount to trade.
+    * @param side The side of the trade order (Buy or Sell).
+    * @param availableOrders The list of available orders to match against.
+    * @param exchangeBalances The balances of the exchanges/order books.
     * @param orderBooks The list of order books to match against.
     *
-    * @return The best price we can get given the amount and type.
+    * @return The best price we can get given the amount and type. We return sum matched amount, average price and exchange details
+    * which include the exchange id, filled amount and average price for each exchange we swap through.
     **/
-    public async Task<Dictionary<string, double>> MatchOrderAsync(double tradeAmount, string tradeType, List<OrderBook> orderBooks)
+    public async Task<BestPathResponse?> MatchOrdersAsync(double amountIn, string side, List<SortedOrderEntry> availableOrders, Dictionary<string, OrderBookBalances> exchangeBalances)
     {
-        // Dictionary to store the best price for each exchange.
-        // Exchange is represented by the time when the order book was acquired.
-        var exchangeToPrice = new Dictionary<string, double>();
-        var bestPrice = -1.0;
-        foreach (var orderBook in orderBooks)
+        return await Task.Run(() =>
         {
-            var orders = (tradeType == "Buy") ? orderBook.Asks : orderBook.Bids;
-            if (orders == null || orders.Count == 0)
-            {
-                continue;
-            }
+            var remainingBalances = new Dictionary<string, OrderBookBalances>(exchangeBalances);
+            var remainingAmount = amountIn;
+            var totalCost = 0.0;
+            var totalAmount = 0.0;
 
-            var remainingTradeAmount = tradeAmount;
-            var currentPrice = 0.0;
-            foreach (var order in orders)
-            {
-                double orderPrice = order.Order.Price;
-                double orderAmount = order.Order.Amount;
+            var pathDetails = new Dictionary<string, ExchangePathDetail>();
 
-                if (orderAmount >= remainingTradeAmount)
-                {
-                    currentPrice += remainingTradeAmount * orderPrice;
-                    remainingTradeAmount = 0;
+            foreach (var order in availableOrders)
+            {
+                string exchangeId = order.OrderBookId;
+                if (remainingAmount <= 0)
                     break;
-                }
-                else
+
+                if (!remainingBalances.TryGetValue(exchangeId, out var balances))
+                    continue;
+
+                double maxAvailableAmount;
+                if (side == "Buy")
                 {
-                    currentPrice += orderAmount * orderPrice;
-                    remainingTradeAmount -= orderAmount;
+                    maxAvailableAmount = balances.BalanceEur / order.Price;
                 }
+                else // "Sell"
+                {
+                    maxAvailableAmount = balances.BalanceBtc;
+                }
+
+                double amountToTake = Math.Min(order.Amount, Math.Min(remainingAmount, maxAvailableAmount));
+
+                if (amountToTake <= 0)
+                    continue;
+
+                remainingAmount -= amountToTake;
+                totalCost += amountToTake * order.Price;
+                totalAmount += amountToTake;
+
+                if (side == "Buy")
+                {
+                    balances.BalanceEur -= amountToTake * order.Price;
+                }
+                else // "Sell"
+                {
+                    balances.BalanceBtc -= amountToTake;
+                }
+
+                if (!pathDetails.ContainsKey(exchangeId))
+                {
+                    pathDetails[exchangeId] = new ExchangePathDetail
+                    {
+                        ExchangeId = exchangeId,
+                        FilledAmount = 0,
+                        AveragePrice = 0
+                    };
+                }
+
+                var exchangeDetail = pathDetails[exchangeId];
+                exchangeDetail.FilledAmount += amountToTake;
+                exchangeDetail.AveragePrice = ((exchangeDetail.AveragePrice * (exchangeDetail.FilledAmount - amountToTake)) + (amountToTake * order.Price)) / exchangeDetail.FilledAmount;
+                exchangeDetail.RemainingBalanceBtc = balances.BalanceBtc;
+                exchangeDetail.RemainingBalanceEur = balances.BalanceEur;
             }
 
-            if (remainingTradeAmount == 0)
+            if (totalAmount > 0)
             {
-                exchangeToPrice[orderBook.AcqTime.ToString()] = currentPrice;
-                if (bestPrice == -1 || currentPrice < bestPrice)
+                return new BestPathResponse
                 {
-                    bestPrice = currentPrice;
-                }
+                    TotalAmount = totalAmount,
+                    AveragePrice = totalCost / totalAmount,
+                    ExchangeDetails = pathDetails.Values.ToList()
+                };
             }
-        }
 
-        // Filter the dictionary to return only entries that match the bestPrice
-        var result = (bestPrice == -1)
-            ? new Dictionary<string, double>()
-            : exchangeToPrice.Where(p => p.Value == bestPrice).ToDictionary(p => p.Key, p => p.Value);
-
-        await Task.CompletedTask;
-
-        return result;
+            return null;
+        });
     }
 }
