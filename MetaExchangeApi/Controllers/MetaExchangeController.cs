@@ -53,31 +53,10 @@ namespace MetaExchangeApi.Controllers
                 return BadRequest("No paths found. Try a lower amount.");
             }
 
-            var result = new StringBuilder();
-
-            result.AppendLine("Path found:");
-            result.AppendLine($"Total Filled Amount: {Math.Round(bestPath.TotalAmount, 6)} BTC");
-            result.AppendLine($"Total Price: {Math.Round(bestPath.AveragePrice * bestPath.TotalAmount, 6)} EUR");
-            result.AppendLine($"Average Price: {Math.Round(bestPath.AveragePrice, 6)} EUR");
-
-            // We want to prevent the response from being too large as it slows the UI so in case of bigger amounts we'll only return cumulative amount and price.
-            if (amount <= 1000.0)
-            {
-                foreach (var fill in bestPath.ExchangeDetails)
-                {
-                    result.AppendLine($"Exchange: {fill.ExchangeId}, Filled Amount: {Math.Round(fill.FilledAmount, 6)} BTC, Average Price: {Math.Round(fill.AveragePrice, 6)} EUR, Remaining BTC: {Math.Round(fill.RemainingBalanceBtc, 6)}, Remaining EUR: {Math.Round(fill.RemainingBalanceEur, 6)}");
-                }
-            }
-            else
-            {
-                result.AppendLine("Path is hidden due to large amount.");
-            }
-
-
             watch.Stop();
             _logger.LogDebug($"GetQuote | Execution Time: {watch.ElapsedMilliseconds} ms");
 
-            return Ok(result.ToString());
+            return Ok(bestPath);
         }
 
         // This endpoint can be used to submit a trade order. It is not implemented in the current version of the API.

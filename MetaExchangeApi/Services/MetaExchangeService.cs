@@ -98,8 +98,8 @@ public class MetaExchangeService
             {
                 var balance = new OrderBookBalances
                 {
-                    BalanceBtc = random.NextDouble() * 500,
-                    BalanceEur = random.NextDouble() * 500 * 3000
+                    BalanceBtc = random.NextDouble() * 5,
+                    BalanceEur = random.NextDouble() * 5 * 3000
                 };
 
                 exchangeBalances[orderBook.Id!] = balance;
