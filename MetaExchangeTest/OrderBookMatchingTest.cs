@@ -159,7 +159,7 @@ public class OrderBookMatchingTest
         Assert.AreEqual(bestPrices.ExchangeDetails[0].RemainingBalanceBtc, 100);
         Assert.AreEqual(bestPrices.ExchangeDetails[0].RemainingBalanceEur, 29400.0);
 
-        Assert.AreEqual(bestPrices.ExchangeDetails[1].AveragePrice, 3161.111111111111);
+        Assert.AreEqual(bestPrices.ExchangeDetails[1].AveragePrice, 3161.111111);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].FilledAmount, 1.8);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].RemainingBalanceBtc, 100);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].RemainingBalanceEur, 54310.0);
@@ -184,12 +184,12 @@ public class OrderBookMatchingTest
         Assert.AreEqual(bestPrices.AveragePrice, 3171.40625);
         Assert.AreEqual(bestPrices.ExchangeDetails.Count, 2);
 
-        Assert.AreEqual(bestPrices.ExchangeDetails[0].AveragePrice, 3217.5965665236054);
-        Assert.AreEqual(bestPrices.ExchangeDetails[0].FilledAmount, 0.7281250000000001);
+        Assert.AreEqual(bestPrices.ExchangeDetails[0].AveragePrice, 3217.596567);
+        Assert.AreEqual(bestPrices.ExchangeDetails[0].FilledAmount, 0.728125);
         Assert.AreEqual(bestPrices.ExchangeDetails[0].RemainingBalanceBtc, 0.5);
-        Assert.AreEqual(bestPrices.ExchangeDetails[0].RemainingBalanceEur, 657.1874999999998);
+        Assert.AreEqual(bestPrices.ExchangeDetails[0].RemainingBalanceEur, 657.1875);
 
-        Assert.AreEqual(bestPrices.ExchangeDetails[1].AveragePrice, 3144.9631449631447);
+        Assert.AreEqual(bestPrices.ExchangeDetails[1].AveragePrice, 3144.963145);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].FilledAmount, 1.271875);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].RemainingBalanceBtc, 10.0);
         Assert.AreEqual(bestPrices.ExchangeDetails[1].RemainingBalanceEur, 0.0);

@@ -41,7 +41,7 @@ namespace MetaExchangeApi.Controllers
             // This should never happen, but we need to handle it gracefully.
             if (sortedOrders == null || exchangeBalances == null)
             {
-                return StatusCode(500, "Internal Server Error. No liquidity."); ;
+                return StatusCode(500, "Internal Server Error. No liquidity.");
             }
 
             // Match the order against the order books and find the best paths/prices.
@@ -55,6 +55,11 @@ namespace MetaExchangeApi.Controllers
 
             watch.Stop();
             _logger.LogDebug($"GetQuote | Execution Time: {watch.ElapsedMilliseconds} ms");
+
+            if (bestPath.TotalAmount < amount)
+            {
+                return Ok($"Order can be only partially filled {bestPath.TotalAmount} BTC with average price {bestPath.AveragePrice} EUR.");
+            }
 
             return Ok(bestPath);
         }

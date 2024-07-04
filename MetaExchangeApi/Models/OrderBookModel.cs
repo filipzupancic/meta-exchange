@@ -72,4 +72,13 @@ public class OrderBookBalances
 {
     public double BalanceBtc { get; set; }
     public double BalanceEur { get; set; }
+
+    public OrderBookBalances Copy()
+    {
+        return new OrderBookBalances
+        {
+            BalanceBtc = this.BalanceBtc,
+            BalanceEur = this.BalanceEur
+        };
+    }
 }

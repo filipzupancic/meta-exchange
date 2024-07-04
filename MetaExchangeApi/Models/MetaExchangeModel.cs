@@ -8,6 +8,7 @@ public class BestPathResponse
 {
     public double TotalAmount { get; set; }
     public double AveragePrice { get; set; }
+    public double TotalPrice { get; set; }
     public List<ExchangePathDetail> ExchangeDetails { get; set; } = new List<ExchangePathDetail>();
 }
 

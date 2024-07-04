@@ -128,7 +128,14 @@ public class MetaExchangeService
     {
         return await Task.Run(() =>
         {
-            var remainingBalances = new Dictionary<string, OrderBookBalances>(exchangeBalances);
+            var remainingBalances = new Dictionary<string, OrderBookBalances>();
+
+            // We need to copy values to avoid modifying the original balances
+            foreach (var balance in exchangeBalances)
+            {
+                remainingBalances[balance.Key] = balance.Value.Copy();
+            }
+
             var remainingAmount = amountIn;
             var totalCost = 0.0;
             var totalAmount = 0.0;
@@ -183,18 +190,19 @@ public class MetaExchangeService
                 }
 
                 var exchangeDetail = pathDetails[exchangeId];
-                exchangeDetail.FilledAmount += amountToTake;
-                exchangeDetail.AveragePrice = ((exchangeDetail.AveragePrice * (exchangeDetail.FilledAmount - amountToTake)) + (amountToTake * order.Price)) / exchangeDetail.FilledAmount;
-                exchangeDetail.RemainingBalanceBtc = balances.BalanceBtc;
-                exchangeDetail.RemainingBalanceEur = balances.BalanceEur;
+                exchangeDetail.FilledAmount = Math.Round(exchangeDetail.FilledAmount + amountToTake, 6);
+                exchangeDetail.AveragePrice = Math.Round(((exchangeDetail.AveragePrice * (exchangeDetail.FilledAmount - amountToTake)) + (amountToTake * order.Price)) / exchangeDetail.FilledAmount, 6);
+                exchangeDetail.RemainingBalanceBtc = Math.Round(balances.BalanceBtc, 6);
+                exchangeDetail.RemainingBalanceEur = Math.Round(balances.BalanceEur, 6);
             }
 
             if (totalAmount > 0)
             {
                 return new BestPathResponse
                 {
-                    TotalAmount = totalAmount,
-                    AveragePrice = totalCost / totalAmount,
+                    TotalAmount = Math.Round(totalAmount, 6),
+                    AveragePrice = Math.Round(totalCost / totalAmount, 6),
+                    TotalPrice = Math.Round(totalCost, 6),
                     ExchangeDetails = pathDetails.Values.ToList()
                 };
             }
